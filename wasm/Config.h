@@ -44,6 +44,7 @@ struct Configuration {
 
   std::vector<llvm::StringRef> SearchPaths;
   std::set<llvm::StringRef> AllowUndefinedSymbols;
+  std::set<llvm::StringRef> ExportSymbols;
   std::vector<std::pair<Symbol*, WasmGlobal>> SyntheticGlobals;
 };
 

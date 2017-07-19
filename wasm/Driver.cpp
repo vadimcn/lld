@@ -103,8 +103,24 @@ static bool parseUndefinedFile(StringRef Filename) {
       break;
     Pos = NextLine + 1;
   }
+  return true;
+}
 
-
+static bool parseExportsFile(StringRef Filename) {
+  Optional<MemoryBufferRef> Buffer = readFile(Filename);
+  if (!Buffer.hasValue())
+    return false;
+  StringRef Str = Buffer->getBuffer();
+  size_t Pos = 0;
+  while (1) {
+    size_t NextLine = Str.find('\n', Pos);
+    StringRef SymbolName = Str.slice(Pos, NextLine);
+    if (!SymbolName.empty())
+      Config->ExportSymbols.insert(SymbolName);
+    if (NextLine == StringRef::npos)
+      break;
+    Pos = NextLine + 1;
+  }
   return true;
 }
 
@@ -269,6 +285,12 @@ void LinkerDriver::link(ArrayRef<const char *> ArgsArr) {
   StringRef AllowUndefinedFilename = getString(Args, OPT_allow_undefined_file);
   if (!AllowUndefinedFilename.empty()) {
     if (!parseUndefinedFile(AllowUndefinedFilename))
+      return;
+  }
+
+  StringRef ExportsFilename = getString(Args, OPT_exports_file);
+  if (!ExportsFilename.empty()) {
+    if (!parseExportsFile(ExportsFilename))
       return;
   }
 

@@ -487,6 +487,8 @@ void Writer::writeExportSection(raw_fd_ostream& OS) {
         if (Sym->isDefined()) NumExports++;
   }
 
+  NumExports += Config->ExportSymbols.size();
+
   if (!NumExports)
     return;
 
@@ -528,6 +530,18 @@ void Writer::writeExportSection(raw_fd_ostream& OS) {
           Export.Kind = WASM_EXTERNAL_GLOBAL;
         write_export(Export, OS);
       }
+    }
+
+    for (const StringRef &Entry : Config->ExportSymbols) {
+      Symbol* Sym = Symtab->find(Entry);
+      if (!Sym->isFunction())
+        fatal("exported symbol not a function: " + Sym->getName());
+
+      WasmExport Export;
+      Export.Name = Sym->getName();
+      Export.Kind = WASM_EXTERNAL_FUNCTION;
+      Export.Index = Sym->getOutputIndex();
+      write_export(Export, OS);
     }
 
     // TODO(sbc): Export local symbols too, Even though they are not part
