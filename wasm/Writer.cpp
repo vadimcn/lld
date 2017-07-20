@@ -470,8 +470,8 @@ void Writer::writeTableSection(raw_fd_ostream& OS) {
 void Writer::writeExportSection(raw_fd_ostream& OS) {
   // Memory is and main function are exported for executables.
   bool ExportMemory = !Config->Relocatable && !Config->ImportMemory;
-  bool ExportMain = !Config->Relocatable;
-  bool ExportOther = Config->Relocatable;
+  bool ExportMain = !Config->Relocatable && !Config->Dylib;
+  bool ExportOther = Config->Relocatable && Config->ExportSymbols.empty();
 
   uint32_t NumExports = 0;
 
@@ -487,7 +487,12 @@ void Writer::writeExportSection(raw_fd_ostream& OS) {
         if (Sym->isDefined()) NumExports++;
   }
 
-  NumExports += Config->ExportSymbols.size();
+  for (const StringRef &Entry : Config->ExportSymbols) {
+    Symbol* Sym = Symtab->find(Entry);
+    if (!Sym || Sym->isUndefined())
+      fatal("exported symbol is not defined: " + Entry);
+    NumExports++;
+  }
 
   if (!NumExports)
     return;
@@ -531,21 +536,23 @@ void Writer::writeExportSection(raw_fd_ostream& OS) {
         write_export(Export, OS);
       }
     }
-
-    for (const StringRef &Entry : Config->ExportSymbols) {
-      Symbol* Sym = Symtab->find(Entry);
-      if (!Sym->isFunction())
-        fatal("exported symbol not a function: " + Sym->getName());
-
-      WasmExport Export;
-      Export.Name = Sym->getName();
-      Export.Kind = WASM_EXTERNAL_FUNCTION;
-      Export.Index = Sym->getOutputIndex();
-      write_export(Export, OS);
-    }
-
     // TODO(sbc): Export local symbols too, Even though they are not part
     // of the symbol table?
+  }
+
+  for (const StringRef &Entry : Config->ExportSymbols) {
+    Symbol* Sym = Symtab->find(Entry);
+    assert(Sym && !Sym->isUndefined());
+    log("Export: " + Sym->getName());
+
+    WasmExport Export;
+    Export.Name = Sym->getName();
+    Export.Index = Sym->getOutputIndex();
+    if (Sym->isFunction())
+      Export.Kind = WASM_EXTERNAL_FUNCTION;
+    else
+      Export.Kind = WASM_EXTERNAL_GLOBAL;
+    write_export(Export, OS);
   }
 
   endSection(Section, OS);

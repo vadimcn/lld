@@ -81,6 +81,9 @@ def exports_file: J<"exports-file=">,
 
 def exports_file_s: Separate<["-"], "exports-file">, Alias<exports_file>;
 
+def dylib: F<"dylib">,
+  HelpText<"Build a dynamic library (no entry point)">;
+
 // Aliases
 def alias_initial_memory_i: Flag<["-"], "i">, Alias<initial_memory>;
 def alias_max_memory_m: Flag<["-"], "m">, Alias<max_memory>;

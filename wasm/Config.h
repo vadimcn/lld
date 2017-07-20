@@ -28,6 +28,7 @@ struct Configuration {
   bool Demangle = true;
   bool EmitRelocs = false;
   bool Relocatable = false;
+  bool Dylib = false;
   bool Verbose = false;
   bool StripDebug = false;
   bool StripAll = false;

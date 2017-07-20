@@ -270,6 +270,7 @@ void LinkerDriver::link(ArrayRef<const char *> ArgsArr) {
   Config->ImportMemory = Args.hasArg(OPT_import_memory);
   Config->OutputFile = getString(Args, OPT_o);
   Config->Relocatable = Args.hasArg(OPT_relocatable);
+  Config->Dylib = Args.hasArg(OPT_dylib);
   Config->SearchPaths = getArgs(Args, OPT_L);
   Config->StripAll = Args.hasArg(OPT_strip_all);
   Config->StripDebug = Args.hasArg(OPT_strip_debug);
@@ -301,11 +302,15 @@ void LinkerDriver::link(ArrayRef<const char *> ArgsArr) {
   if (!Args.hasArgNoClaim(OPT_INPUT))
     fatal("no input files");
 
-  if (!Config->Relocatable) {
-    if (Config->Entry.empty())
-      Config->Entry = "_start";
-    addSyntheticUndefinedFunction(Config->Entry);
+  if (Config->Dylib && Config->Relocatable)
+    fatal("--relocatable and --dylib options are mutually exclusive");
 
+  if (!Config->Relocatable) {
+    if (!Config->Dylib) {
+      if (Config->Entry.empty())
+        Config->Entry = "_start";
+      addSyntheticUndefinedFunction(Config->Entry);
+    }
     addSyntheticGlobal("__stack_pointer", 0);
   }
 
@@ -322,7 +327,7 @@ void LinkerDriver::link(ArrayRef<const char *> ArgsArr) {
   if (!Config->AllowUndefined && !Config->Relocatable)
     Symtab.reportRemainingUndefines();
 
-  if (!Config->Relocatable) {
+  if (!Config->Relocatable && !Config->Dylib) {
     Symbol* Sym = Symtab.find(Config->Entry);
     if (!Sym->isFunction())
       fatal("entry point is not a function: " + Sym->getName());
